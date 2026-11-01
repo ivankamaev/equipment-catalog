@@ -55,14 +55,25 @@ function translateError(error) {
 // Показать приложение после входа и загрузить список (один раз за вход)
 let listLoaded = false;
 let signedIn = false;
+let currentUserId = null; // кто вошёл — чтобы понимать, чьи приборы он может удалять
+let isAdmin = false;
 function showApp(user) {
   signedIn = true;
+  currentUserId = user.id;
   document.getElementById('user-email').textContent = user.email;
+  checkAdmin();
   route();
   if (!listLoaded) {
     listLoaded = true;
     loadEquipment();
   }
+}
+
+// Спросить у базы, админ ли текущий пользователь (функция is_admin из 03_admins.sql).
+// Это только чтобы показать или спрятать кнопку «Удалить» — настоящую проверку делает база.
+async function checkAdmin() {
+  const { data } = await db.rpc('is_admin');
+  isAdmin = data === true;
 }
 
 // Что показать, решает адрес: #item/12 — список и поверх него карточка прибора 12, иначе — только список.
@@ -116,28 +127,38 @@ function formatNumber(value) {
   return Number(value).toLocaleString('ru-RU');
 }
 
-// Загрузить оборудование из базы
+// Загрузить оборудование и подкатегории из базы — два запроса одновременно
 async function loadEquipment() {
   const status = document.getElementById('list-status');
   status.textContent = 'Загружаем…';
 
-  const { data, error } = await db
-    .from('equipment')
-    .select('id, name, manufacturer, model, category, subcategory, rental_price, weight_kg, power_w')
-    .order('name');
+  const [equipment, subs] = await Promise.all([
+    db.from('equipment')
+      .select('id, name, manufacturer, model, category, subcategory_id, rental_price, weight_kg, power_w')
+      .order('name'),
+    db.from('subcategories').select('id, category, name, position').order('position').order('id'),
+  ]);
 
+  const error = equipment.error || subs.error;
   if (error) {
     status.textContent = translateError(error);
     listLoaded = false; // при следующем входе попробуем ещё раз
     return;
   }
-  allItems = data;
+  allItems = equipment.data;
+  allSubcategories = subs.data;
   applyFilters();
 }
 
-// Всё загруженное оборудование и выбранная категория ('' — все)
+// Всё загруженное оборудование, все подкатегории (уже в нужном порядке) и выбранная категория ('' — все)
 let allItems = [];
+let allSubcategories = [];
 let selectedCategory = '';
+
+// Название подкатегории прибора (или '' если её нет)
+function subcategoryName(item) {
+  return allSubcategories.find((s) => s.id === item.subcategory_id)?.name || '';
+}
 
 // Текст для сравнения: маленькие буквы, ё = е
 function normalize(text) {
@@ -150,7 +171,7 @@ function applyFilters() {
 
   const found = allItems.filter((item) => {
     if (selectedCategory && item.category !== selectedCategory) return false;
-    const text = normalize([item.name, item.manufacturer, item.model, item.subcategory].join(' ')); // пустые поля join пропускает
+    const text = normalize([item.name, item.manufacturer, item.model, subcategoryName(item)].join(' ')); // пустые поля join пропускает
     return words.every((word) => text.includes(word)); // каждое слово запроса должно найтись
   });
 
@@ -209,30 +230,32 @@ function renderEquipment(items) {
     const group = document.createElement('section');
     group.className = 'group';
     // Категория — общая плашка: сверху её название и шапка с колонками, ниже плашки подкатегорий
+    // Название категории и справа кнопка «Порядок» — переставить подкатегории
     const title = document.createElement('h2');
-    title.textContent = label;
+    const titleText = document.createElement('span');
+    titleText.textContent = label;
+    const orderButton = document.createElement('button');
+    orderButton.type = 'button';
+    orderButton.className = 'order-button';
+    orderButton.textContent = '⇅ Порядок';
+    orderButton.addEventListener('click', () => openReorder(value));
+    title.append(titleText, orderButton);
     group.append(title, renderHeader());
 
-    // Раскладываем приборы по подкатегориям: { 'Микрофоны': [...], 'Прочее': [...] }
-    const bySub = {};
-    for (const item of groupItems) {
-      const sub = item.subcategory || OTHER_SUBCATEGORY;
-      (bySub[sub] ||= []).push(item);
-    }
-
-    // Подкатегории по алфавиту, «Прочее» — последней
-    const subs = Object.keys(bySub).sort((a, b) => {
-      if (a === OTHER_SUBCATEGORY) return 1;
-      if (b === OTHER_SUBCATEGORY) return -1;
-      return a.localeCompare(b, 'ru');
-    });
+    // Подкатегории — в том порядке, что задан перетаскиванием (allSubcategories уже отсортирован),
+    // приборы без подкатегории — в «Прочее» в конце
+    const subs = allSubcategories
+      .filter((s) => s.category === value)
+      .map((s) => ({ name: s.name, items: groupItems.filter((item) => item.subcategory_id === s.id) }));
+    subs.push({ name: OTHER_SUBCATEGORY, items: groupItems.filter((item) => !subcategoryName(item)) });
 
     for (const sub of subs) {
+      if (!sub.items.length) continue; // пустые подкатегории в списке не показываем
       const subtitle = document.createElement('h3');
-      subtitle.textContent = sub;
+      subtitle.textContent = sub.name;
 
       const ul = document.createElement('ul');
-      const sorted = bySub[sub].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      const sorted = sub.items.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
       ul.append(...sorted.map(renderRow));
 
       // Каждая подкатегория со своими приборами — отдельная скруглённая плашка
@@ -329,7 +352,7 @@ async function renderItem(item) {
   title.textContent = item.name;
   const path = document.createElement('p');
   path.className = 'card-path';
-  path.textContent = [category ? category.label : item.category, item.subcategory].filter(Boolean).join(' › ');
+  path.textContent = [category ? category.label : item.category, subcategoryName(item)].filter(Boolean).join(' › ');
   card.append(title, path);
 
   // Фото — если загружено
@@ -389,6 +412,46 @@ async function renderItem(item) {
   dates.textContent = `Добавлен ${formatDate(item.created_at)}` +
     (item.updated_at !== item.created_at ? ` · изменён ${formatDate(item.updated_at)}` : '');
   card.append(dates);
+
+  // Кнопки: изменить может любой из команды, удалить — автор или админ (как в правилах базы)
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.textContent = 'Изменить';
+  editButton.addEventListener('click', () => openForm(item));
+  actions.append(editButton);
+  if (item.created_by === currentUserId || isAdmin) {
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'danger';
+    deleteButton.textContent = 'Удалить';
+    deleteButton.addEventListener('click', () => deleteItem(item, deleteButton));
+    actions.append(deleteButton);
+  }
+  card.append(actions);
+}
+
+// Удалить прибор вместе с его фото и мануалом
+async function deleteItem(item, button) {
+  if (!confirm(`Удалить «${item.name}»? Это нельзя отменить.`)) return;
+  button.disabled = true;
+
+  // .select() возвращает удалённые строки. Если правила не разрешили удаление,
+  // база не выдаёт ошибку, а просто ничего не удаляет — тогда список будет пустым.
+  const { data, error } = await db.from('equipment').delete().eq('id', item.id).select('id');
+  button.disabled = false;
+  if (error || !data.length) {
+    alert(error ? translateError(error) : 'Нет прав на удаление этого прибора');
+    return;
+  }
+
+  // Файлы убираем после записи: если не получится — останется лишь лишний файл, а не битая ссылка
+  if (item.photo_path) db.storage.from('photos').remove([item.photo_path]);
+  if (item.manual_path) db.storage.from('manuals').remove([item.manual_path]);
+
+  loadEquipment();
+  closeItem();
 }
 
 // Ссылка, открывающаяся в новой вкладке
@@ -423,6 +486,8 @@ db.auth.onAuthStateChange((event, session) => {
   } else {
     listLoaded = false;
     signedIn = false;
+    currentUserId = null;
+    isAdmin = false;
     if (itemDialog.open) itemDialog.close();
     showScreen('login-screen');
   }

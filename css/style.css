@@ -575,3 +575,182 @@ button.secondary {
 @media (hover: hover) {
   .suggest li:hover:not(.active) { background: var(--bg); }
 }
+
+/* Кнопки в карточке: «Изменить» и «Удалить» */
+.card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.card-actions button { min-width: 120px; }
+button.danger {
+  background: none;
+  color: var(--error);
+  border: 1px solid var(--error);
+}
+
+/* Фото/мануал в форме: поле выбора файла и под ним «Удалить текущее» */
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.item-form label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.item-form label.checkbox[hidden] { display: none; }
+.item-form label.checkbox input { width: auto; }
+
+/* Кнопки «Импорт из Excel» и «+ Добавить» справа от заголовка */
+.title-row { flex-wrap: wrap; }
+.title-buttons { display: flex; gap: 8px; }
+#import-button { padding: 10px 16px; }
+
+/* Окно импорта шире обычного — в нём таблица */
+.sheet.wide-sheet { width: min(900px, calc(100% - 32px)); }
+@media (max-width: 640px) { .sheet.wide-sheet { width: 100%; } }
+
+.import-hint { color: var(--muted); font-size: 14px; margin: 0 0 12px; clear: both; }
+.import-file { margin-bottom: 8px; }
+#import-message { color: var(--muted); }
+#import-message.error { color: var(--error); }
+
+/* Предпросмотр: раздел — плашка, внутри строки подкатегорий */
+.import-section {
+  margin-bottom: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--xl-row);
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--xl-text);
+}
+.import-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 150px;
+  gap: 10px;
+  align-items: center;
+  padding: 6px 10px;
+  border-top: 1px solid var(--xl-subcategory);
+  font-size: 14px;
+}
+.import-section-head {
+  grid-template-columns: 20px minmax(0, 1fr) 150px;
+  background: var(--xl-category);
+  border-top: none;
+  font-size: 15px;
+}
+.import-row.off { opacity: 0.45; }
+.import-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.import-count { color: var(--xl-muted); white-space: nowrap; font-size: 13px; }
+.import-row select {
+  font: inherit;
+  font-size: 14px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+}
+@media (max-width: 640px) {
+  .import-row { grid-template-columns: 20px minmax(0, 1fr) auto; }
+  .import-row select { grid-column: 2 / -1; }
+  .import-section-head { grid-template-columns: 20px minmax(0, 1fr); }
+}
+
+/* Кнопка «⇅ Порядок» справа в полосе названия категории */
+.group h2 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.order-button {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: none;
+  color: var(--xl-text);
+  border: 1px solid currentColor;
+  font-size: 13px;
+  opacity: 0.6;
+}
+@media (hover: hover) {
+  .order-button:hover { opacity: 1; }
+}
+
+/* Окно порядка подкатегорий */
+.reorder-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--xl-row);
+}
+.reorder-list li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px 4px 4px;
+  border-top: 1px solid var(--xl-subcategory);
+  background: var(--xl-row);
+  color: var(--xl-text);
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+.reorder-list li:first-child { border-top: none; }
+/* Строку, которую тянут, подсвечиваем */
+.reorder-list li.dragging {
+  background: var(--xl-subcategory);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+}
+.drag-handle {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: none;
+  color: var(--xl-muted);
+  font-size: 20px;
+  cursor: grab;
+  touch-action: none; /* палец на ручке тянет строку, а не прокручивает страницу */
+}
+.reorder-list li.dragging .drag-handle { cursor: grabbing; }
+.reorder-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reorder-hint { color: var(--xl-muted); font-size: 13px; white-space: nowrap; }
+@media (max-width: 640px) {
+  .reorder-list li { grid-template-columns: 36px minmax(0, 1fr); }
+  .reorder-hint { grid-column: 2; white-space: normal; }
+}
+#reorder-message { color: var(--muted); }
+
+/* Кнопки «переименовать» и «удалить» в окне подкатегорий */
+.reorder-list li { grid-template-columns: 36px minmax(0, 1fr) auto auto; }
+.reorder-actions { display: flex; gap: 2px; }
+.icon-button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--xl-muted);
+  font-size: 16px;
+}
+@media (hover: hover) {
+  .icon-button:hover { background: var(--xl-subcategory); color: var(--xl-text); }
+  .icon-button.danger-icon:hover { color: var(--error); }
+}
+.rename-input {
+  min-width: 0;
+  padding: 4px 8px;
+  font-size: 15px;
+}
+@media (max-width: 640px) {
+  .reorder-list li { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .reorder-hint { grid-column: 2 / 3; grid-row: 2; }
+  .reorder-actions { grid-column: 3; grid-row: 1 / 3; }
+}

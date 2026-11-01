@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=18">
+  <link rel="stylesheet" href="css/style.css?v=25">
 </head>
 <body>
   <main>
@@ -59,7 +59,10 @@
       </header>
       <div class="title-row">
         <h1>Оборудование</h1>
-        <button type="button" id="add-button">+ Добавить</button>
+        <div class="title-buttons">
+          <button type="button" id="import-button" class="secondary">Импорт из Excel</button>
+          <button type="button" id="add-button">+ Добавить</button>
+        </div>
       </div>
       <input type="search" id="search" placeholder="Поиск" autocomplete="off">
       <div id="categories" class="chips"></div>
@@ -81,15 +84,15 @@
       </div>
     </dialog>
 
-    <!-- Форма добавления прибора: окно поверх списка -->
-    <dialog id="form-dialog" class="sheet" aria-label="Новый прибор">
+    <!-- Форма прибора — добавление и изменение: окно поверх списка -->
+    <dialog id="form-dialog" class="sheet" aria-labelledby="form-title">
       <div class="dialog-body">
         <button type="button" id="close-form-button" class="close-button" aria-label="Закрыть">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
-        <h1>Новый прибор</h1>
+        <h1 id="form-title">Новый прибор</h1>
 
         <form id="item-form" class="item-form" novalidate>
           <label class="wide">Наименование *
@@ -100,7 +103,11 @@
             <select name="category" id="form-category" required></select>
           </label>
           <label>Подкатегория
-            <input name="subcategory" autocomplete="off" placeholder="Начните вводить…">
+            <select name="subcategory_id" id="form-subcategory"></select>
+          </label>
+          <!-- Появляется, если в списке выбрали «+ Новая подкатегория…» -->
+          <label class="wide" id="new-subcategory-row" hidden>Название новой подкатегории
+            <input name="new_subcategory" autocomplete="off">
           </label>
 
           <label>Фирма
@@ -133,12 +140,23 @@
             <input name="website_url" type="url" inputmode="url" placeholder="https://…" autocomplete="off">
           </label>
 
-          <label>Фото (JPEG, PNG, HEIC)
-            <input name="photo" type="file" accept="image/*">
-          </label>
-          <label>Мануал (PDF, до 50 МБ)
-            <input name="manual" type="file" accept="application/pdf">
-          </label>
+          <div class="file-field">
+            <label>Фото (JPEG, PNG, HEIC)
+              <input name="photo" type="file" accept="image/*">
+            </label>
+            <!-- Видно только при изменении прибора, у которого уже есть фото -->
+            <label class="checkbox" id="remove-photo-row" hidden>
+              <input name="remove_photo" type="checkbox"> Удалить текущее фото
+            </label>
+          </div>
+          <div class="file-field">
+            <label>Мануал (PDF, до 50 МБ)
+              <input name="manual" type="file" accept="application/pdf">
+            </label>
+            <label class="checkbox" id="remove-manual-row" hidden>
+              <input name="remove_manual" type="checkbox"> Удалить текущий мануал
+            </label>
+          </div>
 
           <p id="form-message" class="wide" role="status"></p>
 
@@ -147,6 +165,50 @@
             <button type="submit">Сохранить</button>
           </div>
         </form>
+      </div>
+    </dialog>
+
+    <!-- Порядок подкатегорий одной категории: перетаскивание за ручку -->
+    <dialog id="reorder-dialog" class="sheet" aria-labelledby="reorder-title">
+      <div class="dialog-body">
+        <button type="button" id="close-reorder-button" class="close-button" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <h1 id="reorder-title">Подкатегории</h1>
+        <p class="import-hint">Перетащите подкатегории за ручку ⠿ и нажмите «Сохранить порядок». ✎ — переименовать, ✕ — удалить (сохраняются сразу).</p>
+        <ul id="reorder-list" class="reorder-list"></ul>
+        <p id="reorder-message" role="status"></p>
+        <div class="form-buttons">
+          <button type="button" id="cancel-reorder-button" class="secondary">Отмена</button>
+          <button type="button" id="save-reorder-button">Сохранить порядок</button>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Импорт приборов из сметы Excel: выбрать файл → посмотреть, что найдено → загрузить -->
+    <dialog id="import-dialog" class="sheet wide-sheet" aria-labelledby="import-title">
+      <div class="dialog-body">
+        <button type="button" id="close-import-button" class="close-button" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <h1 id="import-title">Импорт из Excel</h1>
+        <p class="import-hint">
+          Файл сметы .xlsx: разделы («Звуковое оборудование»), шапка «Наименование · Фирма · Модель · … · Цена аренды»,
+          подкатегории и строки приборов; мощность берётся из столбца «Мощность» как есть, в ваттах. Приборы, которые уже есть в справочнике, повторно не добавятся.
+        </p>
+        <label class="import-file">Файл Excel
+          <input type="file" id="import-file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </label>
+        <p id="import-message" role="status"></p>
+        <div id="import-preview"></div>
+        <div class="form-buttons" id="import-buttons" hidden>
+          <button type="button" id="cancel-import-button" class="secondary">Отмена</button>
+          <button type="button" id="run-import-button">Импортировать</button>
+        </div>
       </div>
     </dialog>
 
@@ -191,8 +253,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="js/config.js?v=18"></script>
-  <script src="js/app.js?v=18"></script>
-  <script src="js/form.js?v=18"></script>
+  <script src="js/config.js?v=25"></script>
+  <script src="js/app.js?v=25"></script>
+  <script src="js/form.js?v=25"></script>
+  <script src="js/import.js?v=25"></script>
+  <script src="js/reorder.js?v=25"></script>
 </body>
 </html>
