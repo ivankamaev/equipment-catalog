@@ -45,6 +45,10 @@ function translateError(error) {
   if (text.includes('Password should be')) return 'Пароль слишком короткий';
   if (text.includes('rate limit')) return 'Слишком много попыток, подождите немного';
   if (text.includes('same password')) return 'Новый пароль совпадает со старым';
+  if (text.includes('mime type')) return 'Такой тип файла хранилище не принимает';
+  if (text.includes('maximum allowed size')) return 'Файл слишком большой';
+  if (text.includes('row-level security')) return 'Нет прав на это действие';
+  if (text.includes('Failed to fetch') || text.includes('Load failed')) return 'Нет связи с сервером, проверьте интернет';
   return 'Ошибка: ' + text;
 }
 

@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=15">
+  <link rel="stylesheet" href="css/style.css?v=18">
 </head>
 <body>
   <main>
@@ -57,7 +57,10 @@
         <span id="user-email"></span>
         <button type="button" id="logout-button" class="link">Выйти</button>
       </header>
-      <h1>Оборудование</h1>
+      <div class="title-row">
+        <h1>Оборудование</h1>
+        <button type="button" id="add-button">+ Добавить</button>
+      </div>
       <input type="search" id="search" placeholder="Поиск" autocomplete="off">
       <div id="categories" class="chips"></div>
       <p id="list-status"></p>
@@ -65,16 +68,85 @@
     </section>
 
     <!-- Карточка прибора: окно поверх списка, заполняется скриптом -->
-    <dialog id="item-dialog" aria-label="Карточка прибора">
+    <dialog id="item-dialog" class="sheet" aria-label="Карточка прибора">
       <!-- Всё содержимое внутри обёртки: нажатие мимо неё — это нажатие на фон -->
       <div class="dialog-body">
-        <button type="button" id="close-item-button" aria-label="Закрыть">
+        <button type="button" id="close-item-button" class="close-button" aria-label="Закрыть">
           <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
         <p id="item-status"></p>
         <article id="item-card"></article>
+      </div>
+    </dialog>
+
+    <!-- Форма добавления прибора: окно поверх списка -->
+    <dialog id="form-dialog" class="sheet" aria-label="Новый прибор">
+      <div class="dialog-body">
+        <button type="button" id="close-form-button" class="close-button" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <h1>Новый прибор</h1>
+
+        <form id="item-form" class="item-form" novalidate>
+          <label class="wide">Наименование *
+            <input name="name" required autocomplete="off">
+          </label>
+
+          <label>Категория *
+            <select name="category" id="form-category" required></select>
+          </label>
+          <label>Подкатегория
+            <input name="subcategory" autocomplete="off" placeholder="Начните вводить…">
+          </label>
+
+          <label>Фирма
+            <input name="manufacturer" autocomplete="off" placeholder="Начните вводить…">
+          </label>
+          <label>Модель
+            <input name="model" autocomplete="off">
+          </label>
+
+          <label>Цена аренды, ₽
+            <input name="rental_price" inputmode="decimal" autocomplete="off">
+          </label>
+          <label>Мощность, Вт
+            <input name="power_w" inputmode="numeric" autocomplete="off">
+          </label>
+          <label>Вес, кг
+            <input name="weight_kg" inputmode="decimal" autocomplete="off">
+          </label>
+
+          <fieldset class="wide size">
+            <legend>Габариты, мм</legend>
+            <input name="length_mm" inputmode="numeric" placeholder="Длина" aria-label="Длина, мм">
+            <span>×</span>
+            <input name="width_mm" inputmode="numeric" placeholder="Ширина" aria-label="Ширина, мм">
+            <span>×</span>
+            <input name="height_mm" inputmode="numeric" placeholder="Высота" aria-label="Высота, мм">
+          </fieldset>
+
+          <label class="wide">Сайт производителя
+            <input name="website_url" type="url" inputmode="url" placeholder="https://…" autocomplete="off">
+          </label>
+
+          <label>Фото (JPEG, PNG, HEIC)
+            <input name="photo" type="file" accept="image/*">
+          </label>
+          <label>Мануал (PDF, до 50 МБ)
+            <input name="manual" type="file" accept="application/pdf">
+          </label>
+
+          <p id="form-message" class="wide" role="status"></p>
+
+          <div class="wide form-buttons">
+            <button type="button" id="cancel-form-button" class="secondary">Отмена</button>
+            <button type="submit">Сохранить</button>
+          </div>
+        </form>
       </div>
     </dialog>
 
@@ -119,7 +191,8 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="js/config.js?v=15"></script>
-  <script src="js/app.js?v=15"></script>
+  <script src="js/config.js?v=18"></script>
+  <script src="js/app.js?v=18"></script>
+  <script src="js/form.js?v=18"></script>
 </body>
 </html>

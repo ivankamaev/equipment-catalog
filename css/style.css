@@ -407,7 +407,7 @@ li.item { cursor: pointer; }
 .card-dates { color: var(--muted); font-size: 14px; }
 
 /* Окно карточки поверх списка */
-#item-dialog {
+.sheet {
   width: min(720px, calc(100% - 32px));
   max-height: 85vh;
   padding: 0;
@@ -420,10 +420,10 @@ li.item { cursor: pointer; }
 }
 
 /* Затемнение списка за окном */
-#item-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+.sheet::backdrop { background: rgba(0, 0, 0, 0.45); }
 
 /* Пока окно открыто, список под ним не прокручивается */
-body:has(#item-dialog[open]) { overflow: hidden; }
+body:has(.sheet[open]) { overflow: hidden; }
 
 .dialog-body {
   position: relative;
@@ -431,7 +431,7 @@ body:has(#item-dialog[open]) { overflow: hidden; }
 }
 
 /* Крестик в правом верхнем углу окна */
-#close-item-button {
+.close-button {
   position: sticky;
   top: 0;
   float: right;
@@ -448,14 +448,14 @@ body:has(#item-dialog[open]) { overflow: hidden; }
 }
 
 /* Плавное появление: на ноутбуке окно чуть «всплывает» */
-#item-dialog[open] { animation: dialog-in 0.18s ease-out; }
+.sheet[open] { animation: dialog-in 0.18s ease-out; }
 @keyframes dialog-in {
   from { opacity: 0; transform: translateY(12px) scale(0.98); }
 }
 
 /* На телефоне окно — шторка снизу во всю ширину */
 @media (max-width: 640px) {
-  #item-dialog {
+  .sheet {
     width: 100%;
     max-width: 100%;
     max-height: 90vh;
@@ -463,8 +463,115 @@ body:has(#item-dialog[open]) { overflow: hidden; }
     border-radius: 16px 16px 0 0;
   }
   .dialog-body { padding: 16px 16px max(24px, env(safe-area-inset-bottom)); }
-  #item-dialog[open] { animation: sheet-in 0.22s ease-out; }
+  .sheet[open] { animation: sheet-in 0.22s ease-out; }
   @keyframes sheet-in {
     from { transform: translateY(100%); }
   }
+}
+
+/* Заголовок списка с кнопкой «+ Добавить» справа */
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.title-row h1 { margin: 0; }
+#add-button { padding: 10px 16px; }
+
+/* Второстепенная кнопка — «Отмена» */
+button.secondary {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+/* Форма прибора: на ноутбуке поля в две колонки, на телефоне — в одну */
+.item-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 16px;
+  padding: 0;
+  background: none;
+  clear: both;
+}
+.item-form .wide { grid-column: 1 / -1; }
+@media (max-width: 640px) {
+  .item-form { grid-template-columns: minmax(0, 1fr); }
+}
+
+.item-form select {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+.item-form input[type="file"] {
+  padding: 8px;
+  background: var(--card);
+}
+
+/* Габариты: три поля в строку через «×» */
+.item-form .size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  color: var(--muted);
+  font-size: 14px;
+  min-width: 0;   /* у fieldset по умолчанию ширина «не меньше содержимого» — из-за этого поля вылезали */
+}
+.item-form .size legend { padding: 0; margin-bottom: 6px; }
+.item-form .size input { flex: 1 1 0; width: 0; min-width: 0; }
+
+#form-message { margin: 0; min-height: 1.4em; color: var(--muted); }
+#form-message.error { color: var(--error); }
+
+.form-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.form-buttons button { min-width: 120px; }
+
+/* Поля формы растягиваются на ширину своей колонки и не вылезают за окно */
+.item-form label > input,
+.item-form label > select { width: 100%; min-width: 0; }
+.sheet { overflow-x: hidden; }
+
+/* Подсказки под полем ввода (подкатегория, фирма) */
+.item-form label { position: relative; }
+.suggest {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+}
+.suggest[hidden] { display: none; }
+.suggest li {
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 15px;
+  cursor: pointer;
+}
+.suggest li.active { background: var(--accent); color: var(--on-accent); }
+@media (hover: hover) {
+  .suggest li:hover:not(.active) { background: var(--bg); }
 }
