@@ -1,0 +1,104 @@
+/* Цвета в одном месте: светлая тема */
+:root {
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --error: #dc2626;
+  --border: #d1d5db;
+  --on-accent: #ffffff;
+}
+
+/* Тёмная тема — включается сама, если она включена на устройстве */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111827;
+    --card: #1f2937;
+    --text: #f9fafb;
+    --muted: #9ca3af;
+    --accent: #60a5fa;
+    --error: #f87171;
+    --border: #374151;
+    --on-accent: #0b1220;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+main {
+  max-width: 480px;
+  margin: 0 auto;
+  /* Отступы с учётом «чёлки» и полоски внизу iPhone */
+  padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+
+h1 { font-size: 24px; margin: 0 0 20px; }
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--card);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* 16px в полях — иначе iPhone приближает страницу при вводе */
+input {
+  font: inherit;
+  font-size: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+}
+
+button {
+  font: inherit;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--on-accent);
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; }
+
+/* Кнопка, которая выглядит как ссылка */
+button.link {
+  background: none;
+  color: var(--accent);
+  padding: 8px 0;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+#message { min-height: 1.4em; color: var(--muted); }
+#message.error { color: var(--error); }
