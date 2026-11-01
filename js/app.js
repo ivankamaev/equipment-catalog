@@ -36,6 +36,83 @@ function translateError(error) {
   return 'Ошибка: ' + text;
 }
 
+// Показать основной экран и загрузить список (один раз за вход)
+let listLoaded = false;
+function showApp(user) {
+  document.getElementById('user-email').textContent = user.email;
+  showScreen('app-screen');
+  if (!listLoaded) {
+    listLoaded = true;
+    loadEquipment();
+  }
+}
+
+// Число в русском формате: 15 000
+function formatNumber(value) {
+  return Number(value).toLocaleString('ru-RU');
+}
+
+// Загрузить оборудование из базы
+async function loadEquipment() {
+  const status = document.getElementById('list-status');
+  status.textContent = 'Загружаем…';
+
+  const { data, error } = await db
+    .from('equipment')
+    .select('id, name, manufacturer, model, category, rental_price, weight_kg, power_w')
+    .order('name');
+
+  if (error) {
+    status.textContent = translateError(error);
+    listLoaded = false; // при следующем входе попробуем ещё раз
+    return;
+  }
+  status.textContent = data.length ? `Позиций: ${data.length}` : 'Пока ничего не добавлено';
+  renderEquipment(data);
+}
+
+// Нарисовать карточки списка
+function renderEquipment(items) {
+  const list = document.getElementById('equipment-list');
+  list.replaceChildren(); // очистить старый список
+
+  for (const item of items) {
+    const li = document.createElement('li');
+    li.className = 'item';
+
+    // Строка 1: название и цена
+    const row = document.createElement('div');
+    row.className = 'item-row';
+    const name = document.createElement('span');
+    name.className = 'item-name';
+    name.textContent = item.name;
+    const price = document.createElement('span');
+    price.className = 'item-price';
+    price.textContent = item.rental_price != null ? `${formatNumber(item.rental_price)} ₽/сут` : '';
+    row.append(name, price);
+
+    // Строка 2: производитель и модель
+    const model = document.createElement('div');
+    model.className = 'item-model';
+    model.textContent = [item.manufacturer, item.model].filter(Boolean).join(' ');
+
+    // Строка 3: вес и потребление
+    const specs = document.createElement('div');
+    specs.className = 'item-specs';
+    specs.textContent = [
+      item.weight_kg != null ? `${formatNumber(item.weight_kg)} кг` : '',
+      item.power_w != null ? `${formatNumber(item.power_w)} Вт` : '',
+    ].filter(Boolean).join(' · ');
+
+    const category = document.createElement('span');
+    category.className = 'item-category';
+    category.textContent = item.category;
+
+    li.append(row, model, specs, category);
+    list.append(li);
+  }
+}
+
 // Ссылка из письма просрочена или уже использована
 if (hashParams.get('error_code') === 'otp_expired') {
   showMessage('Ссылка из письма устарела. Нажмите «Забыли пароль?», чтобы получить новую.', true);
@@ -48,9 +125,10 @@ db.auth.onAuthStateChange((event, session) => {
   if (session && needsPassword) {
     showScreen('password-screen');
   } else if (session) {
-    document.getElementById('user-email').textContent = session.user.email;
-    showScreen('app-screen');
+    // setTimeout: Supabase не советует обращаться к базе прямо внутри этого обработчика
+    setTimeout(() => showApp(session.user), 0);
   } else {
+    listLoaded = false;
     showScreen('login-screen');
   }
 });
@@ -89,8 +167,7 @@ passwordForm.addEventListener('submit', async (e) => {
   needsPassword = false;
   history.replaceState(null, '', location.pathname); // убираем остатки ссылки из адреса
   showMessage('Пароль сохранён');
-  document.getElementById('user-email').textContent = data.user.email;
-  showScreen('app-screen');
+  showApp(data.user);
 });
 
 // «Забыли пароль?» — письмо со ссылкой, которая вернёт сюда же

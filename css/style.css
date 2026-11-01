@@ -102,3 +102,48 @@ button.link {
 
 #message { min-height: 1.4em; color: var(--muted); }
 #message.error { color: var(--error); }
+
+/* Список оборудования */
+#equipment-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.item {
+  background: var(--card);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.item-name { font-weight: 600; }
+
+.item-model,
+.item-specs {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.item-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.item-price { white-space: nowrap; }
+
+/* Метка категории */
+.item-category {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+#list-status { color: var(--muted); }
