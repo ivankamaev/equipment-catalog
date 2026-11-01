@@ -300,6 +300,15 @@ itemForm.addEventListener('submit', async (e) => {
       record.subcategory_id = sub.id;
     }
 
+    // Новый прибор или прибор, перенесённый в другую подкатегорию, — в конец своей подкатегории
+    const moved = !editingItem || editingItem.subcategory_id !== record.subcategory_id ||
+      editingItem.category !== record.category;
+    if (moved) {
+      const neighbours = allItems.filter((i) => i.category === record.category &&
+        (i.subcategory_id ?? null) === record.subcategory_id && i.id !== editingItem?.id);
+      record.position = Math.max(0, ...neighbours.map((i) => i.position || 0)) + 1;
+    }
+
     // Новый прибор — insert, существующий — update по его id
     const query = editingItem
       ? db.from('equipment').update(record).eq('id', editingItem.id)

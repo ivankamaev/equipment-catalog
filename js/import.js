@@ -112,7 +112,6 @@ function parseRows(rows) {
   const keyOf = (i) => [i.name, i.manufacturer, i.model].map((v) => normalize(v || '')).join('|');
   // Что уже есть в справочнике: ключ → номер подкатегории этого прибора
   const existing = new Map(allItems.map((i) => [keyOf(i), i.subcategory_id]));
-  const seen = new Set();
 
   const result = [];
   let section = null;
@@ -178,11 +177,12 @@ function parseRows(rows) {
       power_w: power,
     };
     const key = keyOf(item);
-    item.duplicate = existing.has(key) || seen.has(key); // уже в справочнике или выше в этом же файле
-    seen.add(key);
-    // Если прибор этой группы уже есть в справочнике в какой-то подкатегории — значит, файл
-    // загружали раньше, и новые приборы группы пойдут в ту же подкатегорию, а не в новую
-    if (existing.get(key) && !group.existingSubcategoryId) group.existingSubcategoryId = existing.get(key);
+    // Пропускаем только то, что уже есть в справочнике. Повторы внутри файла (один прибор
+    // в нескольких комплектах сметы) импортируются каждый в свою подкатегорию.
+    item.duplicate = existing.has(key);
+    // В каких подкатегориях справочника уже лежат приборы этой группы — пригодится,
+    // чтобы при повторной загрузке дополнить ту же подкатегорию, а не создать копию
+    if (existing.get(key)) (group.existingSubcategoryIds ||= new Set()).add(existing.get(key));
     group.items.push(item);
   }
 
@@ -277,8 +277,8 @@ function renderPreview() {
       name.title = group.items.slice(0, 8).map((i) => i.name).join('\n'); // подсказка: первые приборы
       const count = document.createElement('span');
       count.className = 'import-count';
-      // Повторы — приборы, которые уже есть в справочнике или встречались выше в этом файле
-      count.textContent = dups ? `${fresh} новых, ${dups} повтор.` : `${fresh} новых`;
+      // Повторы — приборы, которые уже есть в справочнике
+      count.textContent = dups ? `${fresh} новых, ${dups} уже есть` : `${fresh} новых`;
 
       const groupCheck = checkbox(group.include, (on) => { group.include = on; renderPreview(); });
       groupCheck.disabled = !section.include;
@@ -321,7 +321,7 @@ function updateSummary() {
   const total = sections.flatMap((s) => s.groups).flatMap((g) => g.items);
   const dups = total.filter((i) => i.duplicate).length;
   const count = recordsToImport().length;
-  showImportMessage(`В файле ${total.length} приборов, из них ${dups} уже есть в справочнике или повторяются. ` +
+  showImportMessage(`В файле ${total.length} приборов, из них ${dups} уже есть в справочнике. ` +
     `Будет добавлено: ${count}.`);
   runImportButton.textContent = `Импортировать (${count})`;
   runImportButton.disabled = count === 0;
@@ -334,8 +334,12 @@ async function prepareSubcategories(groups) {
   const toCreate = [];
   for (const group of groups) {
     if (group.subcategoryId || !group.subcategory) continue; // уже есть или приборы без подкатегории
-    const old = allSubcategories.find((s) => s.id === group.existingSubcategoryId);
-    if (old && old.category === group.category) {
+    // Та же подкатегория — там уже лежат приборы этой группы, и название с категорией совпадают.
+    // Одного совпадения приборов мало: прибор из нескольких комплектов лежит в разных подкатегориях.
+    const sameName = (a, b) => normalize(a.replace(/\s+/g, ' ').trim()) === normalize(b.replace(/\s+/g, ' ').trim());
+    const old = allSubcategories.find((s) => group.existingSubcategoryIds?.has(s.id) &&
+      s.category === group.category && sameName(s.name, group.subcategory));
+    if (old) {
       group.subcategoryId = old.id; // этот файл уже загружали — дополняем ту же подкатегорию
     } else {
       toCreate.push(group);
@@ -370,7 +374,19 @@ runImportButton.addEventListener('click', async () => {
   try {
     showImportMessage('Создаём подкатегории…');
     await prepareSubcategories([...new Set(records.map((r) => r.group))]);
-    const rows = records.map(({ group, record }) => ({ ...record, subcategory_id: group.subcategoryId || null }));
+    // Приборы встают в конец своей подкатегории в том порядке, в каком идут в смете
+    const lastPosition = new Map(); // «категория|подкатегория» → последнее занятое место
+    for (const i of allItems) {
+      const key = `${i.category}|${i.subcategory_id ?? ''}`;
+      lastPosition.set(key, Math.max(lastPosition.get(key) || 0, i.position || 0));
+    }
+    const rows = records.map(({ group, record }) => {
+      const subcategory_id = group.subcategoryId || null;
+      const key = `${record.category}|${subcategory_id ?? ''}`;
+      const position = (lastPosition.get(key) || 0) + 1;
+      lastPosition.set(key, position);
+      return { ...record, subcategory_id, position };
+    });
 
     for (let i = 0; i < rows.length; i += 200) {
       showImportMessage(`Добавляем… ${done} из ${rows.length}`);

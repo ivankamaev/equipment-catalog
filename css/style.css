@@ -754,3 +754,12 @@ button.danger {
   .reorder-hint { grid-column: 2 / 3; grid-row: 2; }
   .reorder-actions { grid-column: 3; grid-row: 1 / 3; }
 }
+
+/* Кнопка «⇅» справа в полосе подкатегории — порядок приборов */
+.group h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.group h3 .order-button { padding: 0 8px; font-size: 13px; line-height: 1.5; }

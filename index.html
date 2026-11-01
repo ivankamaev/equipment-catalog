@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=25">
+  <link rel="stylesheet" href="css/style.css?v=28">
 </head>
 <body>
   <main>
@@ -177,7 +177,7 @@
           </svg>
         </button>
         <h1 id="reorder-title">Подкатегории</h1>
-        <p class="import-hint">Перетащите подкатегории за ручку ⠿ и нажмите «Сохранить порядок». ✎ — переименовать, ✕ — удалить (сохраняются сразу).</p>
+        <p class="import-hint" id="reorder-hint-text"></p>
         <ul id="reorder-list" class="reorder-list"></ul>
         <p id="reorder-message" role="status"></p>
         <div class="form-buttons">
@@ -198,7 +198,7 @@
         <h1 id="import-title">Импорт из Excel</h1>
         <p class="import-hint">
           Файл сметы .xlsx: разделы («Звуковое оборудование»), шапка «Наименование · Фирма · Модель · … · Цена аренды»,
-          подкатегории и строки приборов; мощность берётся из столбца «Мощность» как есть, в ваттах. Приборы, которые уже есть в справочнике, повторно не добавятся.
+          подкатегории и строки приборов; мощность берётся из столбца «Мощность» как есть, в ваттах. Приборы, которые уже есть в справочнике, повторно не добавятся; повторы внутри файла добавятся каждый в свою подкатегорию.
         </p>
         <label class="import-file">Файл Excel
           <input type="file" id="import-file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
@@ -253,10 +253,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="js/config.js?v=25"></script>
-  <script src="js/app.js?v=25"></script>
-  <script src="js/form.js?v=25"></script>
-  <script src="js/import.js?v=25"></script>
-  <script src="js/reorder.js?v=25"></script>
+  <script src="js/config.js?v=28"></script>
+  <script src="js/app.js?v=28"></script>
+  <script src="js/form.js?v=28"></script>
+  <script src="js/import.js?v=28"></script>
+  <script src="js/reorder.js?v=28"></script>
 </body>
 </html>

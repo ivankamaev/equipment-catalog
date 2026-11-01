@@ -134,7 +134,7 @@ async function loadEquipment() {
 
   const [equipment, subs] = await Promise.all([
     db.from('equipment')
-      .select('id, name, manufacturer, model, category, subcategory_id, rental_price, weight_kg, power_w')
+      .select('id, name, manufacturer, model, category, subcategory_id, position, rental_price, weight_kg, power_w')
       .order('name'),
     db.from('subcategories').select('id, category, name, position').order('position').order('id'),
   ]);
@@ -171,7 +171,8 @@ function applyFilters() {
 
   const found = allItems.filter((item) => {
     if (selectedCategory && item.category !== selectedCategory) return false;
-    const text = normalize([item.name, item.manufacturer, item.model, subcategoryName(item)].join(' ')); // пустые поля join пропускает
+    // Ищем только по самому прибору: название, фирма, модель (подкатегория не в счёт)
+    const text = normalize([item.name, item.manufacturer, item.model].join(' ')); // пустые поля join пропускает
     return words.every((word) => text.includes(word)); // каждое слово запроса должно найтись
   });
 
@@ -251,11 +252,22 @@ function renderEquipment(items) {
 
     for (const sub of subs) {
       if (!sub.items.length) continue; // пустые подкатегории в списке не показываем
+      // Приборы — в заданном перетаскиванием порядке; при равном месте — по наименованию
+      const sorted = sub.items.sort((a, b) => a.position - b.position || a.name.localeCompare(b.name, 'ru'));
+
+      // Название подкатегории и справа кнопка «⇅» — переставить приборы
       const subtitle = document.createElement('h3');
-      subtitle.textContent = sub.name;
+      const subtitleText = document.createElement('span');
+      subtitleText.textContent = sub.name;
+      const orderItemsButton = document.createElement('button');
+      orderItemsButton.type = 'button';
+      orderItemsButton.className = 'order-button';
+      orderItemsButton.textContent = '⇅';
+      orderItemsButton.title = 'Порядок приборов';
+      orderItemsButton.addEventListener('click', () => openItemReorder(sub.name, sorted));
+      subtitle.append(subtitleText, orderItemsButton);
 
       const ul = document.createElement('ul');
-      const sorted = sub.items.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
       ul.append(...sorted.map(renderRow));
 
       // Каждая подкатегория со своими приборами — отдельная скруглённая плашка

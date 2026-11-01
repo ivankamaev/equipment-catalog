@@ -1,60 +1,87 @@
-// Порядок подкатегорий: окно со списком подкатегорий одной категории, их перетаскивают за ручку.
-// Подключается после app.js и пользуется его функциями: db, CATEGORIES, allItems, allSubcategories,
-// loadEquipment, translateError.
+// Окно порядка — одно на два случая:
+//   «⇅ Порядок» у категории — подкатегории этой категории (их ещё можно переименовать и удалить);
+//   «⇅» у подкатегории — приборы этой подкатегории.
+// Строки перетаскивают за ручку. Подключается после app.js и пользуется его функциями:
+// db, CATEGORIES, allItems, allSubcategories, loadEquipment, translateError.
 
 const reorderDialog = document.getElementById('reorder-dialog');
 const reorderList = document.getElementById('reorder-list');
 const reorderMessage = document.getElementById('reorder-message');
+const reorderHintText = document.getElementById('reorder-hint-text');
 const saveReorderButton = document.getElementById('save-reorder-button');
 
+let reorderMode = 'subcategories'; // что сейчас переставляем: 'subcategories' или 'items'
 // Переименования и удаления сохраняются сразу; если они были — при закрытии окна обновим список
 let subcategoriesChanged = false;
 
-// Открыть окно для категории (value из CATEGORIES)
+// Строка окна: ручка, название, подсказка серым и (необязательно) кнопки справа
+function reorderRow(id, title, hintText, actions = null) {
+  const li = document.createElement('li');
+  li.dataset.id = id;
+
+  const handle = document.createElement('button');
+  handle.type = 'button';
+  handle.className = 'drag-handle';
+  handle.textContent = '⠿';
+  handle.setAttribute('aria-label', `Переместить «${title}» (стрелки вверх и вниз)`);
+
+  const name = document.createElement('span');
+  name.className = 'reorder-name';
+  name.textContent = title;
+
+  const hint = document.createElement('span');
+  hint.className = 'reorder-hint';
+  hint.textContent = hintText;
+
+  li.append(handle, name, hint);
+  if (actions) li.append(actions);
+  return li;
+}
+
+// Показать окно с готовыми строками
+function showReorder(mode, title, hintText, rows, emptyText) {
+  reorderMode = mode;
+  subcategoriesChanged = false;
+  document.getElementById('reorder-title').textContent = title;
+  reorderHintText.textContent = hintText;
+  reorderList.classList.toggle('with-actions', mode === 'subcategories');
+  reorderList.replaceChildren(...rows);
+  reorderMessage.textContent = rows.length ? '' : emptyText;
+  saveReorderButton.disabled = !rows.length;
+  reorderDialog.showModal();
+}
+
+// Подкатегории категории (value из CATEGORIES)
 function openReorder(category) {
   const label = CATEGORIES.find((c) => c.value === category)?.label || category;
-  document.getElementById('reorder-title').textContent = `Подкатегории: ${label}`;
-  reorderMessage.textContent = '';
-  subcategoriesChanged = false;
-
   const subs = allSubcategories.filter((s) => s.category === category);
-  reorderList.replaceChildren(...subs.map((sub) => {
+  const rows = subs.map((sub) => {
     const items = allItems.filter((item) => item.subcategory_id === sub.id);
     // Подсказка, чтобы различать подкатегории с одинаковыми названиями: сколько приборов и каких фирм
     const makers = [...new Set(items.map((i) => i.manufacturer).filter(Boolean))].slice(0, 3);
 
-    const li = document.createElement('li');
-    li.dataset.id = sub.id;
-
-    const handle = document.createElement('button');
-    handle.type = 'button';
-    handle.className = 'drag-handle';
-    handle.textContent = '⠿';
-    handle.setAttribute('aria-label', `Переместить «${sub.name}» (стрелки вверх и вниз)`);
-
-    const name = document.createElement('span');
-    name.className = 'reorder-name';
-    name.textContent = sub.name;
-
-    const hint = document.createElement('span');
-    hint.className = 'reorder-hint';
-    hint.textContent = [`${items.length} шт.`, ...makers].join(' · ');
-
     // Кнопки справа: переименовать и удалить
+    const actions = document.createElement('span');
+    actions.className = 'reorder-actions';
+    const li = reorderRow(sub.id, sub.name, [`${items.length} шт.`, ...makers].join(' · '), actions);
     const renameButton = iconButton('✎', `Переименовать «${sub.name}»`, () => startRename(li, sub));
     const deleteButton = iconButton('✕', `Удалить «${sub.name}»`, () => deleteSubcategory(li, sub, items.length));
     deleteButton.classList.add('danger-icon');
-    const actions = document.createElement('span');
-    actions.className = 'reorder-actions';
     actions.append(renameButton, deleteButton);
-
-    li.append(handle, name, hint, actions);
     return li;
-  }));
+  });
+  showReorder('subcategories', `Подкатегории: ${label}`,
+    'Перетащите подкатегории за ручку ⠿ и нажмите «Сохранить порядок». ✎ — переименовать, ✕ — удалить (сохраняются сразу).',
+    rows, 'В этой категории пока нет подкатегорий.');
+}
 
-  if (!subs.length) reorderMessage.textContent = 'В этой категории пока нет подкатегорий.';
-  saveReorderButton.disabled = !subs.length;
-  reorderDialog.showModal();
+// Приборы одной подкатегории — в том порядке, в каком они сейчас в списке
+function openItemReorder(subcategoryTitle, items) {
+  const rows = items.map((item) =>
+    reorderRow(item.id, item.name, [item.manufacturer, item.model].filter(Boolean).join(' ')));
+  showReorder('items', `Порядок приборов: ${subcategoryTitle}`,
+    'Перетащите приборы за ручку ⠿ в нужном порядке и нажмите «Сохранить порядок».',
+    rows, 'В этой подкатегории нет приборов.');
 }
 
 // Перетаскивание. Pointer-события одинаково работают с мышью и пальцем.
@@ -112,12 +139,13 @@ reorderList.addEventListener('keydown', (e) => {
   handle.focus();
 });
 
-// Сохранить: отправляем номера подкатегорий в новом порядке одним запросом
+// Сохранить: отправляем номера подкатегорий или приборов в новом порядке одним запросом
 saveReorderButton.addEventListener('click', async () => {
   const ids = [...reorderList.children].map((li) => Number(li.dataset.id));
   saveReorderButton.disabled = true;
   reorderMessage.textContent = 'Сохраняем…';
-  const { error } = await db.rpc('reorder_subcategories', { ids });
+  const fn = reorderMode === 'items' ? 'reorder_equipment' : 'reorder_subcategories';
+  const { error } = await db.rpc(fn, { ids });
   saveReorderButton.disabled = false;
   if (error) {
     reorderMessage.textContent = translateError(error);
