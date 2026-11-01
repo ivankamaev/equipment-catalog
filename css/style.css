@@ -36,10 +36,22 @@ body {
 }
 
 main {
-  max-width: 480px;
-  margin: 0 auto;
   /* Отступы с учётом «чёлки» и полоски внизу iPhone */
   padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+
+/* На ноутбуке отступы по бокам побольше */
+@media (min-width: 768px) {
+  main { padding-left: 32px; padding-right: 32px; }
+}
+
+/* Вход и пароль остаются узкими по центру: широкая форма неудобна */
+#login-screen,
+#password-screen,
+#message {
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 h1 { font-size: 24px; margin: 0 0 20px; }
@@ -103,54 +115,80 @@ button.link {
 #message { min-height: 1.4em; color: var(--muted); }
 #message.error { color: var(--error); }
 
-/* Список оборудования */
-#equipment-list {
+/* Группа категории: заголовок и строки */
+.group { margin-top: 20px; }
+
+.group h2 {
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+/* Строки группы — на общей подложке, разделены линиями */
+.group ul {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.item {
   background: var(--card);
   border-radius: 12px;
-  padding: 12px 14px;
 }
 
-.item-name { font-weight: 600; }
-
-.item-model,
-.item-specs {
-  color: var(--muted);
-  font-size: 14px;
-}
-
-.item-row {
-  display: flex;
-  justify-content: space-between;
+/* Одна строка = один прибор. Колонки одинаковой ширины во всех группах,
+   поэтому цена, мощность и вес стоят ровно друг под другом */
+.item {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 110px 90px 90px;
   gap: 12px;
+  align-items: baseline;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+.item:first-child { border-top: none; }
+
+/* Длинный текст обрезается многоточием, а не переносится */
+.item > span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.item-price { white-space: nowrap; }
+/* Основные колонки — обычным цветом, второстепенные (мощность, вес) — серым */
+.item-maker,
+.item-model { text-align: center; }
+.item-price { text-align: right; }
+.item-power,
+.item-weight { color: var(--muted); text-align: right; }
 
-/* Метка категории */
-.item-category {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 12px;
+/* Производитель и модель одной ячейкой нужны только на телефоне */
+.item > .item-maker-model { display: none; }
+
+/* На телефоне одна строка не влезает: название и цена сверху, остальное под ними.
+   Вместо отдельных производителя и модели — одна общая ячейка по левому краю, вес скрыт */
+@media (max-width: 640px) {
+  .item {
+    grid-template-columns: minmax(0, 1fr) 76px;
+    grid-template-areas:
+      "name        price"
+      "maker-model power";
+    gap: 2px 8px;
+  }
+  .item > .item-maker,
+  .item > .item-model,
+  .item > .item-weight { display: none; }
+  .item > .item-maker-model { display: block; grid-area: maker-model; }
+  .item-name { grid-area: name; }
+  .item-price { grid-area: price; }
+  .item-power { grid-area: power; }
+  .item-maker-model,
+  .item-power { font-size: 14px; }
 }
 
-#list-status { color: var(--muted); }
+#list-status { color: var(--muted); margin: 12px 0 0; }
 
 /* Поиск и кнопки категорий */
 #search {
   width: 100%;
+  max-width: 600px;
+  display: block;
   margin-bottom: 10px;
 }
 

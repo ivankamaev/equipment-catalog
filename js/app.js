@@ -6,6 +6,18 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const hashParams = new URLSearchParams(location.hash.slice(1));
 let needsPassword = ['invite', 'recovery'].includes(hashParams.get('type'));
 
+// Категории в порядке показа: value — как хранится в базе, label — как показываем
+const CATEGORIES = [
+  { value: 'звук', label: 'Звук' },
+  { value: 'свет', label: 'Свет' },
+  { value: 'видео', label: 'Видео' },
+  { value: 'сцена', label: 'Сцена' },
+  { value: 'энергетика', label: 'Энергетика' },
+  { value: 'спецэффекты', label: 'Спецэффекты' },
+  { value: 'спецсвязь', label: 'Спецсвязь' },
+  { value: 'прочее', label: 'Прочее' },
+];
+
 // Элементы страницы
 const loginForm = document.getElementById('login-form');
 const passwordForm = document.getElementById('password-form');
@@ -101,6 +113,21 @@ function applyFilters() {
   renderEquipment(found);
 }
 
+// Кнопки категорий: «Все» и по одной на категорию из CATEGORIES
+function buildCategoryChips() {
+  const chips = document.getElementById('categories');
+  for (const { value, label } of [{ value: '', label: 'Все' }, ...CATEGORIES]) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'chip';
+    chip.classList.toggle('active', value === selectedCategory);
+    chip.dataset.category = value;
+    chip.textContent = label;
+    chips.append(chip);
+  }
+}
+buildCategoryChips();
+
 // Поиск срабатывает на каждую набранную букву
 document.getElementById('search').addEventListener('input', applyFilters);
 
@@ -115,46 +142,55 @@ document.getElementById('categories').addEventListener('click', (e) => {
   applyFilters();
 });
 
-// Нарисовать карточки списка
+// Нарисовать список группами по категориям, внутри группы — по наименованию
 function renderEquipment(items) {
   const list = document.getElementById('equipment-list');
   list.replaceChildren(); // очистить старый список
 
-  for (const item of items) {
-    const li = document.createElement('li');
-    li.className = 'item';
+  for (const { value, label } of CATEGORIES) {
+    const groupItems = items
+      .filter((item) => item.category === value)
+      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    if (!groupItems.length) continue; // пустые группы не показываем
 
-    // Строка 1: название и цена
-    const row = document.createElement('div');
-    row.className = 'item-row';
-    const name = document.createElement('span');
-    name.className = 'item-name';
-    name.textContent = item.name;
-    const price = document.createElement('span');
-    price.className = 'item-price';
-    price.textContent = item.rental_price != null ? `${formatNumber(item.rental_price)} ₽/сут` : '';
-    row.append(name, price);
+    const group = document.createElement('section');
+    group.className = 'group';
 
-    // Строка 2: производитель и модель
-    const model = document.createElement('div');
-    model.className = 'item-model';
-    model.textContent = [item.manufacturer, item.model].filter(Boolean).join(' ');
+    const title = document.createElement('h2');
+    title.textContent = label;
 
-    // Строка 3: вес и потребление
-    const specs = document.createElement('div');
-    specs.className = 'item-specs';
-    specs.textContent = [
-      item.weight_kg != null ? `${formatNumber(item.weight_kg)} кг` : '',
-      item.power_w != null ? `${formatNumber(item.power_w)} Вт` : '',
-    ].filter(Boolean).join(' · ');
+    const ul = document.createElement('ul');
+    ul.append(...groupItems.map(renderRow));
 
-    const category = document.createElement('span');
-    category.className = 'item-category';
-    category.textContent = item.category;
-
-    li.append(row, model, specs, category);
-    list.append(li);
+    group.append(title, ul);
+    list.append(group);
   }
+}
+
+// Одна строка списка: название · производитель · модель · цена · мощность · вес
+function renderRow(item) {
+  const li = document.createElement('li');
+  li.className = 'item';
+
+  // Ячейка строки; пустая ячейка тоже нужна, чтобы колонки не съезжали
+  function cell(className, text) {
+    const span = document.createElement('span');
+    span.className = className;
+    span.textContent = text;
+    return span;
+  }
+
+  li.append(
+    cell('item-name', item.name),
+    cell('item-maker', item.manufacturer || ''),
+    cell('item-model', item.model || ''),
+    // То же вместе — для телефона, на ноутбуке спрятано
+    cell('item-maker-model', [item.manufacturer, item.model].filter(Boolean).join(' ')),
+    cell('item-price', item.rental_price != null ? `${formatNumber(item.rental_price)} ₽` : ''),
+    cell('item-power', item.power_w != null ? `${formatNumber(item.power_w)} Вт` : ''),
+    cell('item-weight', item.weight_kg != null ? `${formatNumber(item.weight_kg)} кг` : ''),
+  );
+  return li;
 }
 
 // Ссылка из письма просрочена или уже использована
