@@ -10,6 +10,7 @@
   --on-accent: #ffffff;
   /* Цвета таблицы — из ref1.xlsx */
   --xl-category: #9bceff;
+  --xl-plate: #e8e8e8;      /* фон плашки категории — тускло-серый */
   --xl-head: #a6a6a6;
   --xl-subcategory: #d9d9d9;
   --xl-row: #ffffff;
@@ -30,6 +31,7 @@
   --on-accent: #0b1220;
   /* Те же заливки, притушенные для тёмной темы */
   --xl-category: #2c4c6e;
+  --xl-plate: #262b33;
   --xl-head: #4b4b4b;
   --xl-subcategory: #333a44;
   --xl-row: #1f2937;
@@ -135,14 +137,31 @@ button.link {
   font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 15px;
   color: var(--xl-text);
+  /* Категория — общая тускло-серая плашка, внутри столбиком: название, шапка, подкатегории.
+     overflow обрезает углы голубой полосы названия */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 8px 8px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--xl-plate);
 }
 
-/* Строка категории: «Звук» */
+/* Внутренняя плашка: подкатегория и её приборы.
+   overflow обрезает углы у полосы подкатегории и строк внутри */
+.block {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Название категории «Звук» — голубая полоса во всю ширину плашки
+   (отрицательные отступы растягивают её поверх внутренних отступов плашки) */
 .group h2 {
   font-size: inherit;
   font-weight: normal;
-  margin: 0;
-  padding: 4px 8px;
+  margin: 0 -8px;
+  padding: 6px 16px;
   background: var(--xl-category);
 }
 
@@ -161,6 +180,9 @@ button.link {
   padding: 0;
 }
 
+/* Тонкая линия между приборами (над первым прибором подкатегории линии нет) */
+.group li.item + li.item { border-top: 1px solid var(--xl-subcategory); }
+
 /* Одна строка = один прибор. Колонки одинаковой ширины во всех группах,
    поэтому цена, мощность и вес стоят ровно друг под другом */
 .item {
@@ -178,6 +200,7 @@ button.link {
   min-height: 50px;
   padding-top: 6px;
   padding-bottom: 6px;
+  border-radius: 10px;
   background: var(--xl-head);
 }
 
@@ -195,8 +218,8 @@ button.link {
 .item-power,
 .item-weight { color: var(--xl-muted); text-align: right; }
 
-/* Строки приборов — тонкий шрифт, шапка — обычный, как категории и подкатегории */
-li.item { font-weight: 300; }
+/* Строки приборов — Roboto Thin; категории, подкатегории и шапка — Regular */
+li.item { font-weight: 100; }
 .item-head > span { color: var(--xl-text); }
 
 /* Производитель и модель одной ячейкой нужны только на телефоне */
@@ -326,3 +349,122 @@ button.chip.active {
 
 /* Чтобы кнопка не закрывала последнюю строку списка */
 main { padding-bottom: 80px; }
+
+/* Строку прибора можно нажать — откроется карточка */
+li.item { cursor: pointer; }
+@media (hover: hover) {
+  li.item:hover { background: var(--xl-subcategory); }
+}
+
+/* Карточка прибора */
+#item-card {
+  max-width: 720px;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+#item-card h1 { margin-bottom: 4px; font-weight: 400; }
+
+.card-path { color: var(--muted); margin: 0 0 16px; }
+
+.card-photo {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: var(--card);
+}
+
+/* Характеристики: две колонки «поле — значение», как строки в таблице */
+.card-fields {
+  display: grid;
+  grid-template-columns: minmax(140px, auto) 1fr;
+  margin: 0 0 16px;
+  background: var(--xl-row);
+  /* Скруглённые углы, как у плашек списка; overflow обрезает по ним заливку названий полей */
+  border-radius: 10px;
+  overflow: hidden;
+}
+.card-fields dt,
+.card-fields dd {
+  margin: 0;
+  padding: 6px 10px;
+  border-top: 1px solid var(--xl-subcategory);
+}
+.card-fields dt:first-of-type,
+.card-fields dd:first-of-type { border-top: none; }
+/* Название поля — Regular на заливке шапки списка, значение — Thin */
+.card-fields dt { color: var(--xl-text); font-weight: 400; background: var(--xl-head); }
+.card-fields dd { color: var(--xl-text); font-weight: 100; }
+
+.card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.card-links a { color: var(--accent); }
+
+.card-dates { color: var(--muted); font-size: 14px; }
+
+/* Окно карточки поверх списка */
+#item-dialog {
+  width: min(720px, calc(100% - 32px));
+  max-height: 85vh;
+  padding: 0;
+  border: none;
+  border-radius: 16px;
+  background: var(--bg);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  overflow-y: auto;
+}
+
+/* Затемнение списка за окном */
+#item-dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
+
+/* Пока окно открыто, список под ним не прокручивается */
+body:has(#item-dialog[open]) { overflow: hidden; }
+
+.dialog-body {
+  position: relative;
+  padding: 20px 24px 24px;
+}
+
+/* Крестик в правом верхнем углу окна */
+#close-item-button {
+  position: sticky;
+  top: 0;
+  float: right;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: -8px -12px 0 8px;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Плавное появление: на ноутбуке окно чуть «всплывает» */
+#item-dialog[open] { animation: dialog-in 0.18s ease-out; }
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+}
+
+/* На телефоне окно — шторка снизу во всю ширину */
+@media (max-width: 640px) {
+  #item-dialog {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90vh;
+    margin: auto 0 0;
+    border-radius: 16px 16px 0 0;
+  }
+  .dialog-body { padding: 16px 16px max(24px, env(safe-area-inset-bottom)); }
+  #item-dialog[open] { animation: sheet-in 0.22s ease-out; }
+  @keyframes sheet-in {
+    from { transform: translateY(100%); }
+  }
+}

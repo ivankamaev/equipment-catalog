@@ -48,16 +48,64 @@ function translateError(error) {
   return 'Ошибка: ' + text;
 }
 
-// Показать основной экран и загрузить список (один раз за вход)
+// Показать приложение после входа и загрузить список (один раз за вход)
 let listLoaded = false;
+let signedIn = false;
 function showApp(user) {
+  signedIn = true;
   document.getElementById('user-email').textContent = user.email;
-  showScreen('app-screen');
+  route();
   if (!listLoaded) {
     listLoaded = true;
     loadEquipment();
   }
 }
+
+// Что показать, решает адрес: #item/12 — список и поверх него карточка прибора 12, иначе — только список.
+// Так работают кнопка «Назад» браузера, свайп назад на iPhone и ссылка на конкретный прибор.
+const itemDialog = document.getElementById('item-dialog');
+let openedFromList = false;
+function route() {
+  showScreen('app-screen');
+  const match = location.hash.match(/^#item\/(\d+)$/);
+  if (match) {
+    openItem(Number(match[1]));
+  } else {
+    openedItemId = null;
+    if (itemDialog.open) itemDialog.close();
+  }
+}
+window.addEventListener('hashchange', () => {
+  if (signedIn) route();
+});
+
+// Нажатие на строку прибора — открыть его карточку
+document.getElementById('equipment-list').addEventListener('click', (e) => {
+  const row = e.target.closest('li.item');
+  if (!row) return;
+  openedFromList = true;
+  location.hash = `#item/${row.dataset.id}`;
+});
+
+// Закрыть карточку: если открыли из списка — шаг назад по истории, иначе просто убрать #item из адреса
+function closeItem() {
+  if (openedFromList) {
+    openedFromList = false;
+    history.back();
+  } else {
+    location.hash = '';
+  }
+}
+
+// Закрывают карточку: крестик, Esc и нажатие на затемнённый фон вокруг окна
+document.getElementById('close-item-button').addEventListener('click', closeItem);
+itemDialog.addEventListener('cancel', (e) => {
+  e.preventDefault(); // Esc: закрываем сами, чтобы поправить адрес
+  closeItem();
+});
+itemDialog.addEventListener('click', (e) => {
+  if (e.target === itemDialog) closeItem(); // нажали на сам фон, а не на содержимое окна
+});
 
 // Число в русском формате: 15 000
 function formatNumber(value) {
@@ -156,6 +204,7 @@ function renderEquipment(items) {
 
     const group = document.createElement('section');
     group.className = 'group';
+    // Категория — общая плашка: сверху её название и шапка с колонками, ниже плашки подкатегорий
     const title = document.createElement('h2');
     title.textContent = label;
     group.append(title, renderHeader());
@@ -182,7 +231,11 @@ function renderEquipment(items) {
       const sorted = bySub[sub].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
       ul.append(...sorted.map(renderRow));
 
-      group.append(subtitle, ul);
+      // Каждая подкатегория со своими приборами — отдельная скруглённая плашка
+      const block = document.createElement('div');
+      block.className = 'block';
+      block.append(subtitle, ul);
+      group.append(block);
     }
     list.append(group);
   }
@@ -215,6 +268,7 @@ function renderHeader() {
 function renderRow(item) {
   const li = document.createElement('li');
   li.className = 'item';
+  li.dataset.id = item.id; // по нему откроется карточка
 
   li.append(
     cell('item-name', item.name),
@@ -227,6 +281,125 @@ function renderRow(item) {
     cell('item-weight', item.weight_kg != null ? `${formatNumber(item.weight_kg)} кг` : ''),
   );
   return li;
+}
+
+// Открыть карточку: загрузить прибор целиком из базы и показать
+let openedItemId = null; // какая карточка открыта сейчас — чтобы не дорисовать в неё старую
+async function openItem(id) {
+  openedItemId = id;
+  if (!itemDialog.open) itemDialog.showModal();
+  itemDialog.scrollTop = 0;
+  const status = document.getElementById('item-status');
+  const card = document.getElementById('item-card');
+  card.replaceChildren();
+  status.textContent = 'Загружаем…';
+
+  const { data: item, error } = await db.from('equipment').select('*').eq('id', id).maybeSingle();
+
+  if (openedItemId !== id) return; // пока грузили, человек ушёл на другой экран
+  if (error) {
+    status.textContent = translateError(error);
+    return;
+  }
+  if (!item) {
+    status.textContent = 'Такого прибора нет — возможно, его удалили';
+    return;
+  }
+  status.textContent = '';
+  renderItem(item);
+}
+
+// Временная ссылка на закрытый файл в хранилище (действует час)
+async function fileUrl(bucket, path) {
+  const { data, error } = await db.storage.from(bucket).createSignedUrl(path, 60 * 60);
+  return error ? null : data.signedUrl;
+}
+
+// Нарисовать карточку прибора
+async function renderItem(item) {
+  const card = document.getElementById('item-card');
+  const category = CATEGORIES.find((c) => c.value === item.category);
+
+  // Заголовок: название и «Звук › Микрофоны»
+  const title = document.createElement('h1');
+  title.textContent = item.name;
+  const path = document.createElement('p');
+  path.className = 'card-path';
+  path.textContent = [category ? category.label : item.category, item.subcategory].filter(Boolean).join(' › ');
+  card.append(title, path);
+
+  // Фото — если загружено
+  if (item.photo_path) {
+    const url = await fileUrl('photos', item.photo_path);
+    if (openedItemId !== item.id) return;
+    if (url) {
+      const img = document.createElement('img');
+      img.className = 'card-photo';
+      img.src = url;
+      img.alt = item.name;
+      card.append(img);
+    }
+  }
+
+  // Характеристики таблицей: название поля — значение. Пустые поля не показываем.
+  const size = [item.length_mm, item.width_mm, item.height_mm];
+  const fields = [
+    ['Фирма', item.manufacturer],
+    ['Модель', item.model],
+    ['Цена аренды', item.rental_price != null ? `${formatNumber(item.rental_price)} ₽` : null],
+    ['Мощность', item.power_w != null ? `${formatNumber(item.power_w)} Вт` : null],
+    ['Вес', item.weight_kg != null ? `${formatNumber(item.weight_kg)} кг` : null],
+    ['Габариты (Д × Ш × В)', size.some((v) => v != null)
+      ? size.map((v) => (v != null ? formatNumber(v) : '—')).join(' × ') + ' мм'
+      : null],
+  ];
+  const table = document.createElement('dl');
+  table.className = 'card-fields';
+  for (const [label, value] of fields) {
+    if (value == null || value === '') continue;
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value;
+    table.append(dt, dd);
+  }
+  card.append(table);
+
+  // Ссылки: мануал и сайт производителя
+  const links = document.createElement('div');
+  links.className = 'card-links';
+  if (item.manual_path) {
+    const url = await fileUrl('manuals', item.manual_path);
+    if (openedItemId !== item.id) return;
+    if (url) links.append(makeLink(url, 'Мануал (PDF)'));
+  }
+  // Только http/https — чтобы в ссылку нельзя было подсунуть исполняемый код
+  if (item.website_url && /^https?:\/\//i.test(item.website_url)) {
+    links.append(makeLink(item.website_url, 'Сайт производителя'));
+  }
+  if (links.children.length) card.append(links);
+
+  // Когда добавлен и изменён
+  const dates = document.createElement('p');
+  dates.className = 'card-dates';
+  dates.textContent = `Добавлен ${formatDate(item.created_at)}` +
+    (item.updated_at !== item.created_at ? ` · изменён ${formatDate(item.updated_at)}` : '');
+  card.append(dates);
+}
+
+// Ссылка, открывающаяся в новой вкладке
+function makeLink(url, text) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.textContent = text;
+  a.target = '_blank';
+  a.rel = 'noopener';
+  return a;
+}
+
+// Дата по-русски: 1 ноября 2026
+function formatDate(value) {
+  return new Date(value).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 // Ссылка из письма просрочена или уже использована
@@ -245,6 +418,8 @@ db.auth.onAuthStateChange((event, session) => {
     setTimeout(() => showApp(session.user), 0);
   } else {
     listLoaded = false;
+    signedIn = false;
+    if (itemDialog.open) itemDialog.close();
     showScreen('login-screen');
   }
 });

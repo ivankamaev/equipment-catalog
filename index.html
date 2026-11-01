@@ -20,8 +20,8 @@
   <!-- Шрифт Roboto — как в сметах Excel -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap">
-  <link rel="stylesheet" href="css/style.css?v=5">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@100;400&display=swap">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
   <main>
@@ -64,6 +64,20 @@
       <div id="equipment-list"></div>
     </section>
 
+    <!-- Карточка прибора: окно поверх списка, заполняется скриптом -->
+    <dialog id="item-dialog" aria-label="Карточка прибора">
+      <!-- Всё содержимое внутри обёртки: нажатие мимо неё — это нажатие на фон -->
+      <div class="dialog-body">
+        <button type="button" id="close-item-button" aria-label="Закрыть">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <p id="item-status"></p>
+        <article id="item-card"></article>
+      </div>
+    </dialog>
+
     <p id="message" role="status"></p>
   </main>
 
@@ -105,7 +119,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-  <script src="js/config.js?v=5"></script>
-  <script src="js/app.js?v=5"></script>
+  <script src="js/config.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
 </body>
 </html>
