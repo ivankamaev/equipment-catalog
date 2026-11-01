@@ -67,9 +67,53 @@ async function loadEquipment() {
     listLoaded = false; // при следующем входе попробуем ещё раз
     return;
   }
-  status.textContent = data.length ? `Позиций: ${data.length}` : 'Пока ничего не добавлено';
-  renderEquipment(data);
+  allItems = data;
+  applyFilters();
 }
+
+// Всё загруженное оборудование и выбранная категория ('' — все)
+let allItems = [];
+let selectedCategory = '';
+
+// Текст для сравнения: маленькие буквы, ё = е
+function normalize(text) {
+  return (text || '').toLowerCase().replaceAll('ё', 'е');
+}
+
+// Отобрать приборы по поиску и категории и показать их
+function applyFilters() {
+  const words = normalize(document.getElementById('search').value).split(/\s+/).filter(Boolean);
+
+  const found = allItems.filter((item) => {
+    if (selectedCategory && item.category !== selectedCategory) return false;
+    const text = normalize([item.name, item.manufacturer, item.model].join(' ')); // пустые поля join пропускает
+    return words.every((word) => text.includes(word)); // каждое слово запроса должно найтись
+  });
+
+  const status = document.getElementById('list-status');
+  if (!allItems.length) {
+    status.textContent = 'Пока ничего не добавлено';
+  } else if (found.length === allItems.length) {
+    status.textContent = `Позиций: ${allItems.length}`;
+  } else {
+    status.textContent = `Найдено: ${found.length} из ${allItems.length}`;
+  }
+  renderEquipment(found);
+}
+
+// Поиск срабатывает на каждую набранную букву
+document.getElementById('search').addEventListener('input', applyFilters);
+
+// Нажатие на кнопку категории
+document.getElementById('categories').addEventListener('click', (e) => {
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  selectedCategory = chip.dataset.category;
+  for (const other of document.querySelectorAll('.chip')) {
+    other.classList.toggle('active', other === chip);
+  }
+  applyFilters();
+});
 
 // Нарисовать карточки списка
 function renderEquipment(items) {

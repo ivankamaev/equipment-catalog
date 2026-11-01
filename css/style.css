@@ -147,3 +147,35 @@ button.link {
 }
 
 #list-status { color: var(--muted); }
+
+/* Поиск и кнопки категорий */
+#search {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Кнопки в одну строку, листаются пальцем вбок */
+.chips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+
+button.chip {
+  flex: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+
+button.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
