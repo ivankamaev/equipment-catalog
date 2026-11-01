@@ -71,7 +71,7 @@ async function loadEquipment() {
 
   const { data, error } = await db
     .from('equipment')
-    .select('id, name, manufacturer, model, category, rental_price, weight_kg, power_w')
+    .select('id, name, manufacturer, model, category, subcategory, rental_price, weight_kg, power_w')
     .order('name');
 
   if (error) {
@@ -98,7 +98,7 @@ function applyFilters() {
 
   const found = allItems.filter((item) => {
     if (selectedCategory && item.category !== selectedCategory) return false;
-    const text = normalize([item.name, item.manufacturer, item.model].join(' ')); // пустые поля join пропускает
+    const text = normalize([item.name, item.manufacturer, item.model, item.subcategory].join(' ')); // пустые поля join пропускает
     return words.every((word) => text.includes(word)); // каждое слово запроса должно найтись
   });
 
@@ -142,43 +142,79 @@ document.getElementById('categories').addEventListener('click', (e) => {
   applyFilters();
 });
 
-// Нарисовать список группами по категориям, внутри группы — по наименованию
+// Подгруппа для приборов без подкатегории — всегда в конце категории
+const OTHER_SUBCATEGORY = 'Прочее';
+
+// Нарисовать список: категории → подкатегории → приборы по наименованию
 function renderEquipment(items) {
   const list = document.getElementById('equipment-list');
   list.replaceChildren(); // очистить старый список
 
   for (const { value, label } of CATEGORIES) {
-    const groupItems = items
-      .filter((item) => item.category === value)
-      .sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+    const groupItems = items.filter((item) => item.category === value);
     if (!groupItems.length) continue; // пустые группы не показываем
 
     const group = document.createElement('section');
     group.className = 'group';
-
     const title = document.createElement('h2');
     title.textContent = label;
+    group.append(title, renderHeader());
 
-    const ul = document.createElement('ul');
-    ul.append(...groupItems.map(renderRow));
+    // Раскладываем приборы по подкатегориям: { 'Микрофоны': [...], 'Прочее': [...] }
+    const bySub = {};
+    for (const item of groupItems) {
+      const sub = item.subcategory || OTHER_SUBCATEGORY;
+      (bySub[sub] ||= []).push(item);
+    }
 
-    group.append(title, ul);
+    // Подкатегории по алфавиту, «Прочее» — последней
+    const subs = Object.keys(bySub).sort((a, b) => {
+      if (a === OTHER_SUBCATEGORY) return 1;
+      if (b === OTHER_SUBCATEGORY) return -1;
+      return a.localeCompare(b, 'ru');
+    });
+
+    for (const sub of subs) {
+      const subtitle = document.createElement('h3');
+      subtitle.textContent = sub;
+
+      const ul = document.createElement('ul');
+      const sorted = bySub[sub].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+      ul.append(...sorted.map(renderRow));
+
+      group.append(subtitle, ul);
+    }
     list.append(group);
   }
+}
+
+// Ячейка строки; пустая ячейка тоже нужна, чтобы колонки не съезжали
+function cell(className, text) {
+  const span = document.createElement('span');
+  span.className = className;
+  span.textContent = text;
+  return span;
+}
+
+// Шапка таблицы — те же ячейки, что у прибора, поэтому колонки совпадают
+function renderHeader() {
+  const head = document.createElement('div');
+  head.className = 'item item-head';
+  head.append(
+    cell('item-name', 'Наименование'),
+    cell('item-maker', 'Фирма'),
+    cell('item-model', 'Модель'),
+    cell('item-price', 'Цена аренды'),
+    cell('item-power', 'Мощность'),
+    cell('item-weight', 'Вес'),
+  );
+  return head;
 }
 
 // Одна строка списка: название · производитель · модель · цена · мощность · вес
 function renderRow(item) {
   const li = document.createElement('li');
   li.className = 'item';
-
-  // Ячейка строки; пустая ячейка тоже нужна, чтобы колонки не съезжали
-  function cell(className, text) {
-    const span = document.createElement('span');
-    span.className = className;
-    span.textContent = text;
-    return span;
-  }
 
   li.append(
     cell('item-name', item.name),
@@ -262,6 +298,49 @@ forgotButton.addEventListener('click', async () => {
     redirectTo: location.origin + location.pathname,
   });
   showMessage(error ? translateError(error) : 'Письмо отправлено, проверьте почту', Boolean(error));
+});
+
+// Тема оформления: light, dark или system (как в системе)
+const themeButton = document.getElementById('theme-button');
+const themeMenu = document.getElementById('theme-menu');
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+
+// Применить выбор: поставить тему странице и отметить пункт меню
+function applyTheme(choice) {
+  const dark = choice === 'dark' || (choice === 'system' && systemDark.matches);
+  document.documentElement.dataset.themeChoice = choice;
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  for (const item of themeMenu.querySelectorAll('[data-choice]')) {
+    item.setAttribute('aria-checked', String(item.dataset.choice === choice));
+  }
+}
+applyTheme(document.documentElement.dataset.themeChoice);
+
+// В режиме «Как в системе» следим, когда Mac или iPhone сами переключат тему (например, вечером)
+systemDark.addEventListener('change', () => {
+  if (document.documentElement.dataset.themeChoice === 'system') applyTheme('system');
+});
+
+// Кнопка открывает и закрывает меню
+themeButton.addEventListener('click', () => {
+  themeMenu.hidden = !themeMenu.hidden;
+});
+
+// Выбор пункта меню; выбор запоминается на этом устройстве
+themeMenu.addEventListener('click', (e) => {
+  const item = e.target.closest('[data-choice]');
+  if (!item) return;
+  applyTheme(item.dataset.choice);
+  try { localStorage.setItem('theme', item.dataset.choice); } catch (e) {} // в приватном режиме может не сохраниться
+  themeMenu.hidden = true;
+});
+
+// Нажатие мимо меню или Esc — закрыть
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#theme-switcher')) themeMenu.hidden = true;
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') themeMenu.hidden = true;
 });
 
 // Выход — экран входа покажет onAuthStateChange

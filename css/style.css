@@ -8,20 +8,33 @@
   --error: #dc2626;
   --border: #d1d5db;
   --on-accent: #ffffff;
+  /* Цвета таблицы — из ref1.xlsx */
+  --xl-category: #9bceff;
+  --xl-head: #a6a6a6;
+  --xl-subcategory: #d9d9d9;
+  --xl-row: #ffffff;
+  --xl-text: #000000;
+  --xl-muted: #7f7f7f;
 }
 
-/* Тёмная тема — включается сама, если она включена на устройстве */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #111827;
-    --card: #1f2937;
-    --text: #f9fafb;
-    --muted: #9ca3af;
-    --accent: #60a5fa;
-    --error: #f87171;
-    --border: #374151;
-    --on-accent: #0b1220;
-  }
+/* Тёмная тема. Какую тему включить, решает скрипт в <head> index.html:
+   выбор пользователя, а если его нет — настройка устройства */
+:root[data-theme="dark"] {
+  --bg: #111827;
+  --card: #1f2937;
+  --text: #f9fafb;
+  --muted: #9ca3af;
+  --accent: #60a5fa;
+  --error: #f87171;
+  --border: #374151;
+  --on-accent: #0b1220;
+  /* Те же заливки, притушенные для тёмной темы */
+  --xl-category: #2c4c6e;
+  --xl-head: #4b4b4b;
+  --xl-subcategory: #333a44;
+  --xl-row: #1f2937;
+  --xl-text: #f9fafb;
+  --xl-muted: #9ca3af;
 }
 
 * { box-sizing: border-box; }
@@ -115,21 +128,37 @@ button.link {
 #message { min-height: 1.4em; color: var(--muted); }
 #message.error { color: var(--error); }
 
-/* Группа категории: заголовок и строки */
-.group { margin-top: 20px; }
-
-.group h2 {
-  font-size: 18px;
-  margin: 0 0 8px;
+/* Таблица оборудования в стиле сметы Excel (ref1.xlsx): шрифт Roboto, без жирного,
+   заливки: категория — голубая, шапка — тёмно-серая, подкатегория — светло-серая, приборы — белые */
+.group {
+  margin-top: 20px;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  color: var(--xl-text);
 }
 
-/* Строки группы — на общей подложке, разделены линиями */
+/* Строка категории: «Звук» */
+.group h2 {
+  font-size: inherit;
+  font-weight: normal;
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--xl-category);
+}
+
+/* Строка подкатегории: «Акустика» */
+.group h3 {
+  font-size: inherit;
+  font-weight: normal;
+  margin: 0;
+  padding: 4px 8px;
+  background: var(--xl-subcategory);
+}
+
 .group ul {
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--card);
-  border-radius: 12px;
 }
 
 /* Одна строка = один прибор. Колонки одинаковой ширины во всех группах,
@@ -139,10 +168,18 @@ button.link {
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 110px 90px 90px;
   gap: 12px;
   align-items: baseline;
-  padding: 10px 14px;
-  border-top: 1px solid var(--border);
+  padding: 3px 8px;
+  background: var(--xl-row);
 }
-.item:first-child { border-top: none; }
+
+/* Шапка с названиями колонок — высокая, текст по центру по вертикали */
+.item.item-head {
+  align-items: center;
+  min-height: 50px;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background: var(--xl-head);
+}
 
 /* Длинный текст обрезается многоточием, а не переносится */
 .item > span {
@@ -152,11 +189,15 @@ button.link {
 }
 
 /* Основные колонки — обычным цветом, второстепенные (мощность, вес) — серым */
-.item-maker,
-.item-model { text-align: center; }
+.item-maker { text-align: center; }
+.item-model,
 .item-price { text-align: right; }
 .item-power,
-.item-weight { color: var(--muted); text-align: right; }
+.item-weight { color: var(--xl-muted); text-align: right; }
+
+/* Строки приборов — тонкий шрифт, шапка — обычный, как категории и подкатегории */
+li.item { font-weight: 300; }
+.item-head > span { color: var(--xl-text); }
 
 /* Производитель и модель одной ячейкой нужны только на телефоне */
 .item > .item-maker-model { display: none; }
@@ -179,7 +220,9 @@ button.link {
   .item-price { grid-area: price; }
   .item-power { grid-area: power; }
   .item-maker-model,
-  .item-power { font-size: 14px; }
+  .item-power { font-size: 13px; }
+  /* Шапка из двух строк на телефоне не нужна */
+  .item.item-head { display: none; }
 }
 
 #list-status { color: var(--muted); margin: 12px 0 0; }
@@ -217,3 +260,69 @@ button.chip.active {
   border-color: var(--accent);
   color: var(--on-accent);
 }
+
+/* Выбор темы — в правом нижнем углу, поверх страницы */
+#theme-switcher {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Круглая кнопка */
+#theme-button {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* На кнопке — пиктограмма текущего выбора, остальные две спрятаны */
+#theme-button svg { display: none; }
+:root[data-theme-choice="light"] #theme-button .icon-light,
+:root[data-theme-choice="dark"] #theme-button .icon-dark,
+:root[data-theme-choice="system"] #theme-button .icon-system { display: block; }
+
+/* Меню из трёх пунктов над кнопкой */
+#theme-menu {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+#theme-menu[hidden] { display: none; }
+
+#theme-menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  font-size: 15px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Выбранный пункт подсвечен */
+#theme-menu button[aria-checked="true"] {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Чтобы кнопка не закрывала последнюю строку списка */
+main { padding-bottom: 80px; }
